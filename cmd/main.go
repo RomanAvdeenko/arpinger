@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"os/exec"
+	"net"
 	"sync"
 
 	mynet "github.com/RomanAvdeenko/utils/net"
+	"github.com/j-keck/arping"
 )
 
 const concurrentMax = 100
@@ -16,15 +17,17 @@ type Pong struct {
 }
 
 func ping(pingChan <-chan string, pongChan chan<- Pong) {
+/*	Package arping is a native go library to ping a host per arp datagram, or query a host mac address
+	The currently supported platforms are: Linux and BSD.
+	The library requires raw socket access. So it must run as root, or with appropriate capabilities under linux: `sudo setcap cap_net_raw+ep <BIN>`. 
+ */
 	for ip := range pingChan {
-		_, err := exec.Command("ping", "-c1", "-t1", ip).Output()
-		var alive bool
+		_,_, err :=  arping.Ping(net.ParseIP(ip) )		
 		if err != nil {
-			alive = false
+			pongChan <- Pong{Ip: ip, Alive: false}
 		} else {
-			alive = true
-		}
-		pongChan <- Pong{Ip: ip, Alive: alive}
+			pongChan <- Pong{Ip: ip, Alive: true}
+		}		
 	}
 }
 

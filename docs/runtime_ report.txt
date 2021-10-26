@@ -1,0 +1,19 @@
+rav@Note-HP:~/Programing/Go/arpinger$ time go run ./cmd/classic/main.go 
+[{192.168.1.1 true} {192.168.1.49 true} {192.168.1.24 true} {192.168.1.22 true} {192.168.1.40 true} {192.168.1.36 true} {192.168.1.23 true} {192.168.1.48 true} {192.168.1.20 true} {192.168.1.41 true} {192.168.1.203 true} {192.168.1.202 true} {192.168.1.201 true} {192.168.1.200 true} {192.168.1.210 true} {192.168.1.222 true} {192.168.1.220 true}]
+real    0m9,532s
+user    0m0,710s
+sys     0m0,421s
+
+rav@Note-HP:~/Programing/Go/arpinger$ time go run ./cmd/wg/main.go 
+[{192.168.1.24 true} {192.168.1.1 true} {192.168.1.49 true} {192.168.1.22 true} {192.168.1.40 true} {192.168.1.36 true} {192.168.1.48 true} {192.168.1.41 true} {192.168.1.23 true} {192.168.1.20 true} {192.168.1.203 true} {192.168.1.201 true} {192.168.1.200 true} {192.168.1.202 true} {192.168.1.210 true} {192.168.1.220 true} {192.168.1.222 true}]
+real    0m9,545s
+user    0m0,683s
+sys     0m0,562s
+
+go build -o wg ./cmd/main.go
+sudo setcap cap_net_raw+ep ./wg 
+rav@Note-HP:~/Programing/Go/arpinger$ time ./wg
+[{192.168.1.49 true} {192.168.1.1 true} {192.168.1.24 true} {192.168.1.40 true} {192.168.1.23 true} {192.168.1.36 true} {192.168.1.22 true} {192.168.1.201 true} {192.168.1.200 true} {192.168.1.202 true} {192.168.1.210 true} {192.168.1.220 true}]
+real    0m2,103s
+user    0m0,160s
+sys     0m0,311s
