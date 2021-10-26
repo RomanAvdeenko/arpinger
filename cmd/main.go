@@ -1,9 +1,10 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net"
 	"sync"
+	"time"
 
 	mynet "github.com/RomanAvdeenko/utils/net"
 	"github.com/j-keck/arping"
@@ -12,35 +13,44 @@ import (
 const concurrentMax = 100
 
 type Pong struct {
-	Ip    string
-	Alive bool
+	ip    string
+	alive bool
+	respTime time.Duration
+	macAddr net.HardwareAddr
 }
 
-func ping(pingChan <-chan string, pongChan chan<- Pong) {
+func ping(pingChan <-chan string, pongChan chan<- Pong, goRoutineNum int) {
 /*	Package arping is a native go library to ping a host per arp datagram, or query a host mac address
 	The currently supported platforms are: Linux and BSD.
 	The library requires raw socket access. So it must run as root, or with appropriate capabilities under linux: `sudo setcap cap_net_raw+ep <BIN>`. 
  */
+ 	log.Println("Start goroutine", goRoutineNum)
 	for ip := range pingChan {
-		_,_, err :=  arping.Ping(net.ParseIP(ip) )		
-		if err != nil {
-			pongChan <- Pong{Ip: ip, Alive: false}
+		var isAlive bool
+		macAddr,duration, err :=  arping.Ping(net.ParseIP(ip) )
+		if   err != nil {
+			isAlive = false
 		} else {
-			pongChan <- Pong{Ip: ip, Alive: true}
-		}		
+			isAlive = true
+		}	
+		pongChan <- Pong{ip: ip, alive: isAlive, respTime: duration, macAddr: macAddr}	
 	}
+	log.Println("Stop goroutine", goRoutineNum)
 }
 
 func receivePong(pongChan <-chan Pong, done *[]Pong) {	
+	log.Println("-->Start recievePong")
 	for  pong :=range  pongChan{		
 		//fmt.Println("received:", pong)
-		if pong.Alive {
+		if pong.alive {
 			*done = append(*done, pong)
 			}			
 		}
+		log.Println("->Stop recievePong")
 	}
 
 func main() {
+	log.Println("#Start")
 	hosts, _ := mynet.GetHosts("192.168.1.1/24")
 
 	pingChan := make(chan string, concurrentMax)
@@ -50,10 +60,11 @@ func main() {
 
 	// Start workers
 	for i := 0; i < concurrentMax; i++ {
+		i:=i
 		go func() {
-			defer wg.Done()
+			defer wg.Done()			
 			wg.Add(1)
-			ping(pingChan, pongChan)
+			ping(pingChan, pongChan, i)
 		}()
 	}
 
@@ -72,5 +83,6 @@ func main() {
 	close(pongChan)
 
 	// Get results	
-	fmt.Println(done)
+	log.Println("Result:", done)	
+	log.Println("#Stop")
 }
