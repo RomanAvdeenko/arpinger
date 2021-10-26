@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
-	mynet "github.com/RomanAvdeenko/utils/net"
 	"os/exec"
+	"sync"
+
+	mynet "github.com/RomanAvdeenko/utils/net"
 )
 
 const concurrentMax = 100
@@ -26,28 +28,30 @@ func ping(pingChan <-chan string, pongChan chan<- Pong) {
 	}
 }
 
-func receivePong(pongNum int, pongChan <-chan Pong, doneChan chan<- []Pong) {
-	var alives []Pong
-	for i := 0; i < pongNum; i++ {
-		pong := <-pongChan
+func receivePong(pongChan <-chan Pong, done *[]Pong) {	
+	for  pong :=range  pongChan{		
 		//fmt.Println("received:", pong)
 		if pong.Alive {
-			alives = append(alives, pong)
+			*done = append(*done, pong)
+			}			
 		}
 	}
-	doneChan <- alives
-}
 
 func main() {
 	hosts, _ := mynet.GetHosts("192.168.1.1/24")
 
 	pingChan := make(chan string, concurrentMax)
 	pongChan := make(chan Pong, len(hosts))
-	doneChan := make(chan []Pong)
+	done := []Pong{}
+	wg := &sync.WaitGroup{}
 
 	// Start workers
 	for i := 0; i < concurrentMax; i++ {
-		go ping(pingChan, pongChan)
+		go func() {
+			defer wg.Done()
+			wg.Add(1)
+			ping(pingChan, pongChan)
+		}()
 	}
 
 	// Set job
@@ -57,8 +61,13 @@ func main() {
 	}
 	close(pingChan)
 
-	go receivePong(len(hosts), pongChan, doneChan)
+	// Start Receiver
+	go receivePong(pongChan, &done)
 
-	alives := <-doneChan
-	fmt.Println(alives)
+	// Wait for all workers done and close pongChan
+	wg.Wait()
+	close(pongChan)
+
+	// Get results	
+	fmt.Println(done)
 }

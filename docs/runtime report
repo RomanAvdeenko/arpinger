@@ -1,0 +1,4 @@
+time go run ./cmd/classic/main.go
+real    0m9,564s
+user    0m0,747s
+sys     0m0,540s
